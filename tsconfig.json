@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    /* Target moderno, compatível com browsers atuais */
+    "target": "ES2020",
+
+    /* ESM puro */
+    "module": "ESNext",
+
+    /* CRÍTICO para permitir imports com .js no .ts */
+    "moduleResolution": "Bundler",
+
+    /* DOM real */
+    "lib": ["DOM", "DOM.Iterable", "ES2020"],
+
+    /* Lib pública */
+    "declaration": true,
+    "declarationMap": true,
+
+    /* DX */
+    "sourceMap": true,
+    "strict": true,
+
+    /* Necessário para bundlers (tsup) */
+    "isolatedModules": true,
+
+    /* Evita ruído */
+    "skipLibCheck": true,
+
+    /* Saída (opcional quando usa tsup, mas ok) */
+    "outDir": "./dist"
+  },
+  "include": ["src"]
+}

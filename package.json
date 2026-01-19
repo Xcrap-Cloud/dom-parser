@@ -1,0 +1,30 @@
+{
+  "name": "@xcrap/dom",
+  "version": "0.0.1",
+  "description": "DOM parsing and extraction utilities",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [
+    "dom",
+    "parsing",
+    "extraction",
+    "web",
+    "scraping",
+    "parser",
+    "browser",
+    "client-side",
+    "tampermonkey",
+    "user-script"
+  ],
+  "author": "Marcuth",
+  "license": "MIT",
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "ts-jest": "^29.4.6",
+    "typescript": "^5.9.3"
+  }
+}
