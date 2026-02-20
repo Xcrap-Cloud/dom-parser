@@ -1,6 +1,6 @@
 {
   "name": "@xcrap/dom",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "DOM extraction utilities",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
