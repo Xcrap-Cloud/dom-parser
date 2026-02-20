@@ -1,7 +1,7 @@
 {
   "name": "@xcrap/dom",
   "version": "0.1.0",
-  "description": "DOM extraction utilities",
+  "description": "Xcrap DOM is a client-side package designed for DOM data extraction using declarative models. It works natively in browser environments (browser extensions, TamperMonkey user scripts, etc.) and supports both CSS selectors and XPath queries out of the box.",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "scripts": {
