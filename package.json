@@ -1,7 +1,7 @@
 {
   "name": "@xcrap/dom",
   "version": "0.0.1",
-  "description": "DOM parsing and extraction utilities",
+  "description": "DOM extraction utilities",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "scripts": {
@@ -21,7 +21,7 @@
   ],
   "author": "Marcuth",
   "license": "MIT",
-  "type": "commonjs",
+  "type": "module",
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "ts-jest": "^29.4.6",

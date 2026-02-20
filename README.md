@@ -1,6 +1,8 @@
-# 🕷️ Xcrap DOM Parser: Parsing HTML using declarative models
+# 🕷️ Xcrap DOM Extractor
 
-Xcrap DOM is a package from the Xcrap framework, designed to handle DOM data extraction (client-side) using declarative models. It is perfect for use in web scraping extensions and TamperMonkey user scripts.
+> Extracting data from HTML using declarative models — part of the [Xcrap](https://github.com/xcrap) framework.
+
+Xcrap DOM is a **client-side** package designed for DOM data extraction using declarative models. It works natively in browser environments (browser extensions, TamperMonkey user scripts, etc.) and supports both **CSS selectors** and **XPath** queries out of the box.
 
 ---
 
@@ -15,107 +17,291 @@ npm i @xcrap/dom
 
 ---
 
-## 🛠️ How to Use
+## 🛠️ Quick Start
 
-There are several ways to use this parsing engine, from using pre-made models to expanding it by creating parsers for other file types and maintaining the interlocking of these models.
+### Creating a parser
 
-### Providing an HTML string
+`DomParser` receives an HTML string and parses it into a document internally.
 
 ```ts
 import { DomParser } from "@xcrap/dom"
 
-const html = "<html><head><title>Page Title</title></head><body></body></html>" // or document.documentElement.outerHTML
+const html = document.documentElement.outerHTML
 const parser = new DomParser(html)
-
 ```
 
-### Data extraction without using models
+---
+
+## 🔍 Query Builders
+
+Instead of passing raw strings as queries, use the `css()` and `xpath()` helpers to build typed `QueryConfig` objects.
 
 ```ts
-import { DomParser, extract } from "@xcrap/dom"
+import { css, xpath } from "@xcrap/dom"
 
-const html = `<html><head><title>Page Title</title></head><body><a href="https://example.com">Link</a></body></html>`
-const parser = new DomParser(html)
-
-// parseFirst() searches for and extracts something from the first element found
-// extract(key: string, isAttribute?: boolean) is a generic extraction function; you can use some that are already created and ready for use by importing them from the same location :)
-const title = parser.parseFirst({ query: "title", extractor: extract("innerText") })
-
-// parseMany() searches for all elements matching a query (you can limit the number of results) and uses the extractor to get the data
-const links = parser.parseMany({ query: "a", extractor: extract("href", true) })
-
-console.log(title) // "Page Title"
-console.log(links) // ["https://example.com"]
-
+css("h1")               // { type: "css",   value: "h1" }
+xpath("//h1")           // { type: "xpath", value: "//h1" }
 ```
 
-### Data extraction using models
+---
 
-ParsingModels are sufficiently decoupled so that you don't have to rely on Parser instances, but we will use them here nonetheless:
+## 📤 Extracting Data
+
+### `extractValue` — single value from a single element
 
 ```ts
-import { DomParser, DomParsingModel, extract } from "@xcrap/dom"
+import { DomParser, css, extract } from "@xcrap/dom"
 
-const html = `<html><body><h1>Header</h1><div><p id="id">1</p><p id="name">Name</p><p class="age">23</p></div></body></html>`
+const html = `<html><body><h1>Hello World</h1></body></html>`
 const parser = new DomParser(html)
 
-const rootParsingModel = new DomParsingModel({
-	heading: {
-		query: "h1",
-		extractor: extract("innerText")
-	},
-	id: {
-		query: "#id",
-		extractor: extract("innerText")
-	},
-	name: {
-		query: "#name",
-		extractor: extract("innerText")
-	},
-	age: {
-		query: ".age",
-		extractor: extract("innerText")
-	}
+const title = parser.extractValue({
+    query: css("h1"),
+    extractor: extract("innerText"),
+    default: null  // returned if the element is not found
 })
 
-const data = parser.extractFirst({ model: rootParsingModel })
-
-console.log(data) // { heading: "Header", id: "1", name: "Name", age: "23" }
-
+console.log(title) // "Hello World"
 ```
 
-## 🧠 Create your own Parser: Concepts
+### `extractValues` — one value per matched element
 
-### What is a Parser?
+```ts
+import { DomParser, css, extractHref } from "@xcrap/dom"
 
-A Parser for this library is a class that handles a file type in some way, loads that file, and may or may not have methods to easily extract data.
+const html = `<html><body><a href="/a">A</a><a href="/b">B</a></body></html>`
+const parser = new DomParser(html)
 
-A parser has a default method called `parseModel`, which is a wrapper that receives a `ParsingModel` and calls the `parse()` method, providing the internal `source` property.
+const links = parser.extractValues({
+    query: css("a"),
+    extractor: extractHref,
+    limit: 10  // optional
+})
 
-### What is a ParsingModel?
+console.log(links) // ["/a", "/b"]
+```
 
-A Parsing Model is a class that receives a `shape` in its constructor and stores it as a property. It must have a method called `parse()` that receives a `source`, which is the code/text containing the information to be extracted.
+### `extractModel` — parse a subtree with a `DomExtractionModel`
 
-This `shape` is used to declare how the information will be extracted from the `source`.
+```ts
+import { DomParser, DomExtractionModel, css, extract } from "@xcrap/dom"
+
+const html = `<html><body>
+  <h1>Header</h1>
+  <p id="user-id">42</p>
+  <p class="username">john_doe</p>
+</body></html>`
+
+const parser = new DomParser(html)
+
+const model = new DomExtractionModel({
+    heading:  { query: css("h1"),        extractor: extract("innerText") },
+    userId:   { query: css("#user-id"),  extractor: extract("innerText") },
+    username: { query: css(".username"), extractor: extract("innerText") },
+})
+
+const data = parser.extractModel({ model })
+
+console.log(data)
+// { heading: "Header", userId: "42", username: "john_doe" }
+```
+
+### `extractModels` — parse a list of elements, each with the same model
+
+```ts
+import { DomParser, DomExtractionModel, css, extractInnerText, extractHref } from "@xcrap/dom"
+
+const html = `<html><body>
+  <ul>
+    <li><a href="/page/1">Page 1</a></li>
+    <li><a href="/page/2">Page 2</a></li>
+    <li><a href="/page/3">Page 3</a></li>
+  </ul>
+</body></html>`
+
+const parser = new DomParser(html)
+
+const itemModel = new DomExtractionModel({
+    label: { query: css("a"), extractor: extractInnerText },
+    url:   { query: css("a"), extractor: extractHref },
+})
+
+const items = parser.extractModels({
+    query: css("li"),
+    model: itemModel,
+    limit: 10  // optional
+})
+
+console.log(items)
+// [
+//   { label: "Page 1", url: "/page/1" },
+//   { label: "Page 2", url: "/page/2" },
+//   { label: "Page 3", url: "/page/3" },
+// ]
+```
+
+---
+
+## 🧩 `DomExtractionModel` — Declarative Extraction
+
+`DomExtractionModel` receives a `shape` — a plain object where each key maps to an extraction descriptor.
+
+### Base value descriptor
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `query` | `QueryConfig` | No | CSS or XPath query to locate the element |
+| `extractor` | `ExtractorFunction` | **Yes** | Function that receives the element and returns a value |
+| `multiple` | `boolean` | No | If `true`, matches all elements and returns an array |
+| `limit` | `number` | No | Max number of elements when `multiple: true` |
+| `default` | `string \| string[] \| null` | No | Fallback value when the element is not found |
+
+### Nested model descriptor (sub-parsing)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `query` | `QueryConfig` | **Yes** | Query to locate the root element for the nested model |
+| `model` | `ExtractionModel` | **Yes** | Another `DomExtractionModel` to parse the subtree |
+| `multiple` | `boolean` | No | If `true`, applies the model to every matched element |
+| `limit` | `number` | No | Max number of elements when `multiple: true` |
+| `extractor` | `ExtractorFunction` | No | Optional post-processor before feeding into `model.parse()` |
+
+### Using XPath
+
+```ts
+import { DomExtractionModel, xpath, extract } from "@xcrap/dom"
+
+const model = new DomExtractionModel({
+    heading: {
+        query: xpath("//h1"),
+        extractor: extract("innerText")
+    }
+})
+```
+
+### Extracting arrays
+
+```ts
+import { DomExtractionModel, css, extractInnerText } from "@xcrap/dom"
+
+const model = new DomExtractionModel({
+    tags: {
+        query: css("li"),
+        extractor: extractInnerText,
+        multiple: true,
+        limit: 5
+    }
+})
+```
+
+### Nested models
+
+```ts
+import { DomExtractionModel, css, extractInnerText, extractHref } from "@xcrap/dom"
+
+const linkModel = new DomExtractionModel({
+    label: { query: css("a"), extractor: extractInnerText },
+    href:  { query: css("a"), extractor: extractHref },
+})
+
+const pageModel = new DomExtractionModel({
+    title: { query: css("h1"), extractor: extractInnerText },
+    links: { query: css("li"), model: linkModel, multiple: true },
+})
+```
+
+---
+
+## ⚡ Built-in Extractors
+
+Import and use pre-built extractors to avoid repetition:
+
+| Extractor | Extracts |
+|---|---|
+| `extractInnerText` | `element.innerText` |
+| `extractTextContent` | `element.textContent` |
+| `extractInnerHtml` | `element.innerHTML` |
+| `extractOuterHtml` | `element.outerHTML` |
+| `extractTagName` | `element.tagName` |
+| `extractClassList` | `element.classList` as `string[]` |
+| `extractId` | `element.id` |
+| `extractHref` | `href` attribute |
+| `extractSrc` | `src` attribute |
+| `extractValue` | `value` attribute |
+| `extractStyle` | `style` attribute |
+| `extractTitle` | `title` attribute |
+| `extractPlaceholder` | `placeholder` attribute |
+| `extractName` | `name` attribute |
+| `extractType` | `type` attribute |
+| `extractDisabled` | `disabled` attribute |
+| `extractChecked` | `checked` attribute |
+| `extractRequired` | `required` attribute |
+| `extractAriaLabel` | `aria-label` attribute |
+| `extractAriaHidden` | `aria-hidden` attribute |
+| `extractAriaExpanded` | `aria-expanded` attribute |
+| `extractChildElementCount` | `element.childElementCount` |
+| `extractLocalName` | `element.localName` |
+| `extractAttribute(name)` | any attribute by name |
+
+### Using `extract()` directly
+
+```ts
+import { extract } from "@xcrap/dom"
+
+// Property
+extract("innerText")        // → element.innerText
+extract("innerHTML")        // → element.innerHTML
+
+// Attribute (second argument = true)
+extract("data-id", true)    // → element.getAttribute("data-id")
+extract("href", true)       // → element.getAttribute("href")
+```
+
+### Sibling helpers
+
+```ts
+import { fromNextElementSibling, fromPreviousElementSibling, extractInnerText } from "@xcrap/dom"
+
+// Extracts innerText of the NEXT sibling
+const nextText = fromNextElementSibling(extractInnerText)
+
+// Extracts innerText of the PREVIOUS sibling
+const prevText = fromPreviousElementSibling(extractInnerText)
+```
+
+---
+
+## ⚠️ Environment
+
+This package depends on browser-native APIs (`DOMParser`, `document.evaluate`, `XPathResult`, `window`, etc.).  
+It is designed to run exclusively in **browser environments**:
+
+- Browser extensions (Manifest V2 / V3)
+- TamperMonkey / Greasemonkey user scripts
+- In-browser web scraping tools
+
+It will **not** work in Node.js without a DOM emulation layer (e.g., `jsdom` + `linkedom`).
+
+---
 
 ## 🧪 Testing
 
-Automated tests are located in `__tests__`. To run them:
-
 ```bash
 npm run test
-
 ```
+
+---
 
 ## 🤝 Contributing
 
-* Want to contribute? Follow these steps:
-* Fork the repository.
-* Create a new branch (`git checkout -b feature-new`).
-* Commit your changes (`git commit -m 'Add new feature'`).
-* Push to the branch (`git push origin feature-new`).
-* Open a Pull Request.
+1. Fork the repository.
+2. Create a new branch (`git checkout -b feature/my-feature`).
+3. Commit your changes (`git commit -m 'feat: add my feature'`).
+4. Push to the branch (`git push origin feature/my-feature`).
+5. Open a Pull Request.
+
+---
 
 ## 📝 License
 
-This project is licensed under the MIT License.
+This project is licensed under the [MIT License](./LICENSE).

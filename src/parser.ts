@@ -1,27 +1,29 @@
-import { ParsingModel } from "./parsing-model.interface.js"
+import { selectManyElements, selectFirstElement } from "./utils/index.js"
+import { ExtractionModel } from "./extraction-model.interface.js"
 import { HTMLElementNotFoundError } from "./errors.js"
 import { ExtractorFunction } from "./extractors.js"
+import { QueryConfig } from "./query-builders.js"
 
-export type ParseManyOptions = {
-    query: string
+export type ExtractValuesOptions = {
+    query: QueryConfig
     extractor: ExtractorFunction
     limit?: number
 }
 
-export type ParseFirstOptions = {
-    query?: string
+export type ExtractValueOptions = {
+    query?: QueryConfig
     extractor: ExtractorFunction
     default?: string | null
 }
 
-export type ExtractFirstOptions = {
-    query?: string
-    model: ParsingModel
+export type ExtractModelOptions = {
+    query?: QueryConfig
+    model: ExtractionModel
 }
 
-export type ExtractManyOptions = {
-    query: string
-    model: ParsingModel
+export type ExtractModelsOptions = {
+    query: QueryConfig
+    model: ExtractionModel
     limit?: number
 }
 
@@ -32,12 +34,12 @@ export class DomParser {
         this.root = new window.DOMParser().parseFromString(source, "text/html")
     }
 
-    parseMany({
+    extractValues({
         query,
         extractor,
         limit
-    }: ParseManyOptions): (string | undefined)[] {
-        const elements = this.root.querySelectorAll(query)
+    }: ExtractValuesOptions): (string | undefined)[] {
+        const elements = selectManyElements(query, this.root)
 
         const items: (string | undefined)[] = []
 
@@ -50,15 +52,15 @@ export class DomParser {
         return items
     }
 
-    parseFirst({
+    extractValue({
         query,
         extractor,
         default: default_
-    }: ParseFirstOptions): any | undefined | null {
+    }: ExtractValueOptions): any | undefined | null {
         let data: any | undefined | null
 
         if (query) {
-            const element = this.root.querySelector(query)
+            const element = selectFirstElement(query, this.root)
 
             if (!element) {
                 if (default_ !== undefined) return default_
@@ -73,9 +75,9 @@ export class DomParser {
         return data ?? default_
     }
 
-    extractFirst({ model, query }: ExtractFirstOptions) {
+    extractModel({ model, query }: ExtractModelOptions) {
         const element = query
-            ? this.root.querySelector(query)
+            ? selectFirstElement(query, this.root)
             : this.root.documentElement
 
         if (!element) {
@@ -85,8 +87,8 @@ export class DomParser {
         return model.parse(element.outerHTML)
     }
 
-    extractMany({ model, query, limit }: ExtractManyOptions) {
-        const elements = this.root.querySelectorAll(query)
+    extractModels({ model, query, limit }: ExtractModelsOptions) {
+        const elements = selectManyElements(query, this.root)
 
         const dataList: any[] = []
 

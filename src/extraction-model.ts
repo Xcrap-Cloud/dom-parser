@@ -1,29 +1,31 @@
 import { MultipleQueryError, HTMLElementNotFoundError } from "./errors.js"
-import { ParsingModel } from "./parsing-model.interface.js"
+import { selectManyElements, selectFirstElement } from "./utils/index.js"
+import { ExtractionModel } from "./extraction-model.interface.js"
 import { ExtractorFunction } from "./extractors.js"
+import { QueryConfig } from "./query-builders.js"
 
-export type DomParsingModelShapeBaseValue = {
-    query?: string
+export type DomExtractionModelShapeBaseValue = {
+    query?: QueryConfig
     default?: string | string[] | null
     multiple?: boolean
     limit?: number
     extractor: ExtractorFunction
 }
 
-export type DomParsingModelShapeNestedValue = {
-    query: string
+export type DomExtractionModelShapeNestedValue = {
+    query: QueryConfig
     limit?: number
     multiple?: boolean
-    model: ParsingModel
+    model: ExtractionModel
     extractor?: ExtractorFunction
 }
 
-export type DomParsingModelValue =
-    | DomParsingModelShapeBaseValue
-    | DomParsingModelShapeNestedValue
+export type DomExtractionModelValue =
+    | DomExtractionModelShapeBaseValue
+    | DomExtractionModelShapeNestedValue
 
-export type DomParsingModelShape = {
-    [key: string]: DomParsingModelValue
+export type DomExtractionModelShape = {
+    [key: string]: DomExtractionModelValue
 }
 
 export type ParseBaseValueReturnType =
@@ -32,8 +34,8 @@ export type ParseBaseValueReturnType =
     | null
     | undefined
 
-export class DomParsingModel implements ParsingModel {
-    constructor(readonly shape: DomParsingModelShape) { }
+export class DomExtractionModel implements ExtractionModel {
+    constructor(readonly shape: DomExtractionModelShape) { }
 
     parse(source: string): any {
         const document = new window.DOMParser().parseFromString(source, "text/html")
@@ -56,7 +58,7 @@ export class DomParsingModel implements ParsingModel {
     }
 
     protected parseBaseValue(
-        value: DomParsingModelShapeBaseValue,
+        value: DomExtractionModelShapeBaseValue,
         root: Element
     ): ParseBaseValueReturnType {
         if (value.multiple) {
@@ -64,7 +66,7 @@ export class DomParsingModel implements ParsingModel {
                 throw new MultipleQueryError()
             }
 
-            let elements = Array.from(root.querySelectorAll(value.query))
+            let elements = selectManyElements(value.query, root)
 
             if (value.limit !== undefined) {
                 elements = elements.slice(0, value.limit)
@@ -73,7 +75,7 @@ export class DomParsingModel implements ParsingModel {
             return elements.map(element => value.extractor(element as HTMLElement))
         } else {
             const element = value.query
-                ? root.querySelector(value.query)
+                ? selectFirstElement(value.query, root)
                 : root
 
             if (!element) {
@@ -89,11 +91,11 @@ export class DomParsingModel implements ParsingModel {
     }
 
     protected parseNestedValue(
-        value: DomParsingModelShapeNestedValue,
+        value: DomExtractionModelShapeNestedValue,
         root: Element
     ) {
         if (value.multiple) {
-            let elements = Array.from(root.querySelectorAll(value.query))
+            let elements = selectManyElements(value.query, root)
 
             if (value.limit !== undefined) {
                 elements = elements.slice(0, value.limit)
@@ -101,7 +103,7 @@ export class DomParsingModel implements ParsingModel {
 
             return elements.map(element => value.model.parse(element.outerHTML))
         } else {
-            const element = root.querySelector(value.query)
+            const element = selectFirstElement(value.query, root)
 
             if (!element) {
                 throw new HTMLElementNotFoundError(value.query)
